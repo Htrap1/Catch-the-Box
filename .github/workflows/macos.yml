@@ -1,4 +1,5 @@
-name: Build macOS DMG
+
+name: Build Windows and macOS
 
 on:
   push:
@@ -6,7 +7,59 @@ on:
   workflow_dispatch:
 
 jobs:
+  build-windows:
+    name: Build Windows executable
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up MSYS2 and SFML
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-sfml
+            zip
+
+      - name: Compile Windows executable
+        run: |
+          mkdir -p dist/CatchTheBox-Windows
+
+          g++ -std=c++17 \
+            main.cpp src/Game.cpp src/Target.cpp \
+            -o dist/CatchTheBox-Windows/CatchTheBox.exe \
+            -Iinclude \
+            -lsfml-graphics \
+            -lsfml-window \
+            -lsfml-system
+
+      - name: Package executable and dependencies
+        run: |
+          cp -r assets dist/CatchTheBox-Windows/
+
+          for dll in $(ldd dist/CatchTheBox-Windows/CatchTheBox.exe | awk '/\/ucrt64\/bin\// {print $3}' | sort -u); do
+            cp "$dll" dist/CatchTheBox-Windows/
+          done
+
+          cd dist
+          zip -r CatchTheBox-Windows.zip CatchTheBox-Windows
+
+      - name: Upload Windows build
+        uses: actions/upload-artifact@v4
+        with:
+          name: CatchTheBox-Windows
+          path: dist/CatchTheBox-Windows.zip
+
   build-macos:
+    name: Build macOS application
     runs-on: macos-latest
 
     steps:
@@ -15,11 +68,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          brew install sfml dylibbundler
+          brew install sfml@3.0.2 dylibbundler
 
       - name: Build macOS application
         run: |
-          SFML_PREFIX="$(brew --prefix sfml)"
+          SFML_PREFIX="$(brew --prefix sfml@3.0.2)"
           APP="build/CatchTheBox.app"
 
           mkdir -p "$APP/Contents/MacOS"
@@ -66,7 +119,7 @@ jobs:
       - name: Bundle SFML libraries
         run: |
           APP="build/CatchTheBox.app"
-          SFML_PREFIX="$(brew --prefix sfml)"
+          SFML_PREFIX="$(brew --prefix sfml@3.0.2)"
 
           dylibbundler -od -b \
             -x "$APP/Contents/MacOS/CatchTheBox" \
@@ -74,7 +127,7 @@ jobs:
             -p "@executable_path/../Frameworks/" \
             -s "$SFML_PREFIX/lib"
 
-      - name: Create DMG
+      - name: Create macOS DMG
         run: |
           hdiutil create \
             -volname "CatchTheBox" \
@@ -83,7 +136,7 @@ jobs:
             -format UDZO \
             "dist/CatchTheBox-macOS.dmg"
 
-      - name: Upload DMG artifact
+      - name: Upload macOS build
         uses: actions/upload-artifact@v4
         with:
           name: CatchTheBox-macOS
