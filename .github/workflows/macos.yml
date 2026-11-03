@@ -1,0 +1,90 @@
+name: Build macOS DMG
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          brew install sfml dylibbundler
+
+      - name: Build macOS application
+        run: |
+          SFML_PREFIX="$(brew --prefix sfml)"
+          APP="build/CatchTheBox.app"
+
+          mkdir -p "$APP/Contents/MacOS"
+          mkdir -p "$APP/Contents/Resources/assets"
+          mkdir -p dist
+
+          clang++ -std=c++17 \
+            main.cpp src/Game.cpp src/Target.cpp \
+            -o "$APP/Contents/MacOS/CatchTheBox" \
+            -Iinclude \
+            -I"$SFML_PREFIX/include" \
+            -L"$SFML_PREFIX/lib" \
+            -Wl,-rpath,"$SFML_PREFIX/lib" \
+            -lsfml-graphics \
+            -lsfml-window \
+            -lsfml-system
+
+          cp assets/arialbd.ttf "$APP/Contents/Resources/assets/"
+
+          cat > "$APP/Contents/Info.plist" <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+          "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleExecutable</key>
+              <string>CatchTheBox</string>
+              <key>CFBundleIdentifier</key>
+              <string>com.htrap1.catchthebox</string>
+              <key>CFBundleName</key>
+              <string>CatchTheBox</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>CFBundleVersion</key>
+              <string>1.0</string>
+              <key>CFBundleShortVersionString</key>
+              <string>1.0</string>
+              <key>NSHighResolutionCapable</key>
+              <true/>
+          </dict>
+          </plist>
+          EOF
+
+      - name: Bundle SFML libraries
+        run: |
+          APP="build/CatchTheBox.app"
+          SFML_PREFIX="$(brew --prefix sfml)"
+
+          dylibbundler -od -b \
+            -x "$APP/Contents/MacOS/CatchTheBox" \
+            -d "$APP/Contents/Frameworks/" \
+            -p "@executable_path/../Frameworks/" \
+            -s "$SFML_PREFIX/lib"
+
+      - name: Create DMG
+        run: |
+          hdiutil create \
+            -volname "CatchTheBox" \
+            -srcfolder "build/CatchTheBox.app" \
+            -ov \
+            -format UDZO \
+            "dist/CatchTheBox-macOS.dmg"
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CatchTheBox-macOS
+          path: dist/CatchTheBox-macOS.dmg

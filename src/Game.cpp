@@ -1,8 +1,49 @@
+#include <filesystem>
+#include <limits.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#elif defined(__APPLE__)
+#include <mach-o/dyld.h>
+#endif
+
 #include "Game.h"
 #include "Colors.h"
 
+std::filesystem::path getAssetPath(const std::filesystem::path& relativePath)
+{
+#ifdef _WIN32
+
+    wchar_t path[MAX_PATH];
+    GetModuleFileNameW(nullptr, path, MAX_PATH);
+
+    return std::filesystem::path(path).parent_path() / relativePath;
+
+#elif defined(__APPLE__)
+
+    char path[PATH_MAX];
+    uint32_t size = sizeof(path);
+
+    if (_NSGetExecutablePath(path, &size) == 0)
+    {
+        auto executableDir =
+            std::filesystem::weakly_canonical(path).parent_path();
+
+        if (executableDir.filename() == "MacOS")
+        {
+            return executableDir.parent_path() / "Resources" / relativePath;
+        }
+
+        return executableDir / relativePath;
+    }
+
+#endif
+
+    return std::filesystem::current_path() / relativePath;
+}
+
 Game::Game()
-    : font("assets/arialbd.ttf"),
+    : font(getAssetPath("assets/arialbd.ttf")),
     startText(font, "START", 28),
     easyText(font, "EASY", 22),
     mediumText(font, "MEDIUM", 22),
