@@ -68,11 +68,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          brew install sfml@3.0.2 dylibbundler
+          brew install sfml dylibbundler
 
       - name: Build macOS application
         run: |
-          SFML_PREFIX="$(brew --prefix sfml@3.0.2)"
+          SFML_PREFIX="$(brew --prefix sfml)"
           APP="build/CatchTheBox.app"
 
           mkdir -p "$APP/Contents/MacOS"
@@ -119,7 +119,7 @@ jobs:
       - name: Bundle SFML libraries
         run: |
           APP="build/CatchTheBox.app"
-          SFML_PREFIX="$(brew --prefix sfml@3.0.2)"
+          SFML_PREFIX="$(brew --prefix sfml)"
 
           dylibbundler -od -b \
             -x "$APP/Contents/MacOS/CatchTheBox" \
