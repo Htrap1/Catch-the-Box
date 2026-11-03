@@ -45,10 +45,34 @@ ClickTheBox/
 
 ## How to Build and Run
 
-1. Install SFML 3.0.2 and configure its include and library paths.
-2. Open the project directory in your terminal.
-3. Compile the source files using your configured SFML installation.
-4. Run the generated executable.
+### Prerequisites
+
+- Windows 10/11
+- GCC compiler (MSYS2 UCRT64)
+- SFML 3.0.2
+- Visual Studio Code (optional)
+
+### Build Instructions
+
+1. Make sure SFML 3.0.2 is installed and configured in your MSYS2 UCRT64 environment.
+2. Open the project folder in VS Code.
+3. Open the terminal and navigate to the project directory.
+4. Compile the project using:
+
+```bash
+g++ main.cpp src/Game.cpp src/Target.cpp -o main.exe -Iinclude -lsfml-graphics -lsfml-window -lsfml-system
+```
+
+### Run the Game
+
+After successful compilation, execute:
+
+```powershell
+.\main.exe
+```
+
+**Note:** Run the executable from the project's root directory so the game can locate its font file at `assets/arialbd.ttf`.
+
 
 ## Learning Objectives
 
